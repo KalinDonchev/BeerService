@@ -1,32 +1,26 @@
 package com.kalin.beerservice.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kalin.beerservice.bootstrap.BeerLoader;
+import com.kalin.beerservice.services.BeerService;
 import com.kalin.beerservice.web.model.BeerDto;
 import com.kalin.beerservice.web.model.BeerStyleEnum;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.ComponentScan;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.restdocs.RestDocumentationExtension;
-import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
 import org.springframework.test.web.servlet.MockMvc;
-//import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
-import static org.springframework.restdocs.payload.PayloadDocumentation.*;
-import static org.springframework.restdocs.request.RequestDocumentation.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(RestDocumentationExtension.class)
-@AutoConfigureRestDocs
 @WebMvcTest(BeerController.class)
-@ComponentScan(basePackages = "com.kalin.beerservice.web.mappers")
 class BeerControllerTest {
 
     @Autowired
@@ -35,29 +29,17 @@ class BeerControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    @MockBean
+    BeerService beerService;
+
     @Test
     void getBeerById() throws Exception {
-        mockMvc.perform(RestDocumentationRequestBuilders.get("/api/v1/beer/{beerId}", UUID.randomUUID().toString())
-                .param("iscold","yes")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andDo(document("v1/beer-get", pathParameters(
-                        parameterWithName("beerId").description("UUID of desired beer to get.")
-                        ),
-                        requestParameters(
-                                parameterWithName("iscold").description("I Beer Cold Query param")
-                        ),
-                        responseFields(
-                                fieldWithPath("id").description("Id of Beer"),
-                                fieldWithPath("version").description("Version of Beer"),
-                                fieldWithPath("createdDate").description("Create Date of Beer"),
-                                fieldWithPath("lastModifiedDate").description("Id of Beer"),
-                                fieldWithPath("beerName").description("Id of Beer"),
-                                fieldWithPath("beerStyle").description("Id of Beer"),
-                                fieldWithPath("upc").description("Id of Beer"),
-                                fieldWithPath("price").description("Id of Beer"),
-                                fieldWithPath("quantityOnHand").description("Id of Beer")
-                        )));
+
+        given(beerService.getById(any())).willReturn(getValidBeerDto());
+
+        mockMvc.perform(get("/api/v1/beer/" + UUID.randomUUID().toString()).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
     }
 
     @Test
@@ -66,48 +48,33 @@ class BeerControllerTest {
         BeerDto beerDto = getValidBeerDto();
         String beerDtoJson = objectMapper.writeValueAsString(beerDto);
 
-        mockMvc.perform(RestDocumentationRequestBuilders.post("/api/v1/beer")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(beerDtoJson))
-                .andExpect(MockMvcResultMatchers.status().isCreated())
-        .andDo(document("v1/beer-new",
-                requestFields(
-                        fieldWithPath("id").ignored(),
-                        fieldWithPath("version").ignored(),
-                        fieldWithPath("createdDate").ignored(),
-                        fieldWithPath("lastModifiedDate").ignored(),
-                        fieldWithPath("beerName").description("Name of the beer"),
-                        fieldWithPath("beerStyle").description("Style of the beer"),
-                        fieldWithPath("upc").description("Beer UPC").attributes(),
-                        fieldWithPath("price").description("Price of the beer"),
-                        fieldWithPath("quantityOnHand").ignored()
-                )));
+        given(beerService.saveNewBeer(any())).willReturn(getValidBeerDto());
 
-
+        mockMvc.perform(post("/api/v1/beer/")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(beerDtoJson))
+                .andExpect(status().isCreated());
     }
 
     @Test
     void updateBeerById() throws Exception {
+        given(beerService.updateBeer(any(), any())).willReturn(getValidBeerDto());
 
         BeerDto beerDto = getValidBeerDto();
         String beerDtoJson = objectMapper.writeValueAsString(beerDto);
 
-        mockMvc.perform(RestDocumentationRequestBuilders.put("/api/v1/beer/" + UUID.randomUUID().toString())
+        mockMvc.perform(put("/api/v1/beer/" + UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(beerDtoJson))
-                .andExpect(MockMvcResultMatchers.status().isNoContent());
-
-
+                .andExpect(status().isNoContent());
     }
 
-
-    BeerDto getValidBeerDto() {
+    BeerDto getValidBeerDto(){
         return BeerDto.builder()
                 .beerName("New Beer")
-                .beerStyle(BeerStyleEnum.ARIANA)
+                .beerStyle(BeerStyleEnum.ZAGORKA)
                 .price(new BigDecimal("2.99"))
-                .upc(123123123123L)
+                .upc(BeerLoader.BEER_1_UPC)
                 .build();
     }
-
 }
